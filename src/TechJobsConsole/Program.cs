@@ -1,152 +1,181 @@
-using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Text;
 
 namespace TechJobsConsole
 {
-    class Program
+    class JobData
     {
-        static void Main(string[] args)
+        static List<Dictionary<string, string>> AllJobs = new List<Dictionary<string, string>>();
+        static bool IsDataLoaded = false;
+
+        public static List<Dictionary<string, string>> FindAll()
         {
-            // Create two Dictionary vars to hold info for menu and data
-
-            // Top-level menu options
-            Dictionary<string, string> actionChoices = new Dictionary<string, string>();
-            actionChoices.Add("search", "Search");
-            actionChoices.Add("list", "List");
-
-            // Column options
-            Dictionary<string, string> columnChoices = new Dictionary<string, string>();
-            columnChoices.Add("core competency", "Skill");
-            columnChoices.Add("employer", "Employer");
-            columnChoices.Add("location", "Location");
-            columnChoices.Add("position type", "Position Type");
-            columnChoices.Add("all", "All");
-
-            Console.WriteLine("Welcome to LaunchCode's TechJobs App!");
-
-            // Allow user to search/list until they manually quit with ctrl+c
-            while (true)
-            {
-
-                string actionChoice = GetUserSelection("View Jobs", actionChoices);
-
-                if (actionChoice.Equals("list"))
-                {
-                    string columnChoice = GetUserSelection("List", columnChoices);
-
-                    if (columnChoice.Equals("all"))
-                    {
-                        PrintJobs(JobData.FindAll());
-                    }
-                    else
-                    {
-                        List<string> results = JobData.FindAll(columnChoice);
-                        results.Sort();
-                        Console.WriteLine("\n*** All " + columnChoices[columnChoice] + " Values ***");
-                        foreach (string item in results)
-                        {
-                            Console.WriteLine(item);
-                        }
-                    }
-                }
-                else // choice is "search"
-                {
-                    // How does the user want to search (e.g. by skill or employer)
-                    string columnChoice = GetUserSelection("Search", columnChoices);
-
-                    // What is their search term?
-                    Console.WriteLine("\nSearch term: ");
-                    string searchTerm = Console.ReadLine();
-
-                    List<Dictionary<string, string>> searchResults;
-
-                    // Fetch results
-                    if (columnChoice.Equals("all"))
-                    {
-                        searchResults = JobData.FindByValue(searchTerm);
-                        PrintJobs(searchResults);
-//                        Console.WriteLine("Search all fields not yet implemented.");
-                    }
-                    else
-                    {
-                        searchResults = JobData.FindByColumnAndValue(columnChoice, searchTerm);
-                        PrintJobs(searchResults);
-                    }
-                }
-            }
+            LoadData();
+            return AllJobs;
         }
 
         /*
-         * Returns the key of the selected item from the choices Dictionary
+         * Returns a list of all values contained in a given column,
+         * without duplicates. 
          */
-        private static string GetUserSelection(string choiceHeader, Dictionary<string, string> choices)
+        public static List<string> FindAll(string column)
         {
-            int choiceIdx;
-            bool isValidChoice = false;
-            string[] choiceKeys = new string[choices.Count];
+            LoadData();
 
-            int i = 0;
-            foreach (KeyValuePair<string, string> choice in choices)
+            List<string> values = new List<string>();
+
+            foreach (Dictionary<string, string> job in AllJobs)
             {
-                choiceKeys[i] = choice.Key;
-                i++;
+                string aValue = job[column];
+
+                if (!values.Contains(aValue))
+                {
+                    values.Add(aValue);
+                }
             }
-
-            do
-            {
-                Console.WriteLine("\n" + choiceHeader + " by:");
-
-                for (int j = 0; j < choiceKeys.Length; j++)
-                {
-                    Console.WriteLine(j + " - " + choices[choiceKeys[j]]);
-                }
-
-                string input = Console.ReadLine();
-                bool inputVal = int.TryParse(input, out choiceIdx);
-                //                choiceIdx = int.Parse(input);
-                if (inputVal)
-                {
-                    if (choiceIdx < 0 || choiceIdx >= choiceKeys.Length)
-                    {
-                        Console.WriteLine("Invalid choices. Try again.");
-                    }
-                    else
-                    {
-                        isValidChoice = true;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("invalid Choices, Try again");
-                }
-
-            } while (!isValidChoice);
-
-            return choiceKeys[choiceIdx];
+            return values;
         }
 
-        private static void PrintJobs(List<Dictionary<string, string>> someJobs)
+        public static List<Dictionary<string, string>> FindByValue(string value)
         {
-            //            Console.WriteLine("printJobs is not implemented yet");
-            int count = someJobs.Count;
-            if (count==0)
+            // load data, if not already loaded
+            LoadData();
+
+            List<Dictionary<string, string>> jobs = new List<Dictionary<string, string>>();
+
+            foreach (Dictionary<string, string> row in AllJobs)
             {
-                Console.WriteLine(" No data found with the search");
+                foreach(KeyValuePair<string,string> itemline in row)
+                {
+                    if (itemline.Value.ToLower().Contains(value.ToLower()))
+                    {
+                        if (!jobs.Contains(row))
+                            jobs.Add(row);
+                    }
+                }
+            }
+
+            return jobs;
+        }
+
+
+        public static List<Dictionary<string, string>> FindByColumnAndValue(string column, string value)
+        {
+            // load data, if not already loaded
+            LoadData();
+
+            List<Dictionary<string, string>> jobs = new List<Dictionary<string, string>>();
+            if (column == "all")
+            {
+                foreach (Dictionary<string, string> row in AllJobs)
+                {
+                    foreach (KeyValuePair<string, string> itemline in row)
+                    {
+                        if (itemline.Value.ToLower().Contains(value.ToLower()))
+                        {
+                            string aValue = row[column];
+                        }
+                    }
+                }
             }
             else
             {
-                foreach(Dictionary<string,string> item in someJobs)
+                foreach (Dictionary<string, string> row in AllJobs)
                 {
-                    Console.WriteLine("\n****");
-                    foreach (KeyValuePair<string, string> itemline in item) 
-                    {
-                        if (itemline.Key != "S.no")
-                            Console.WriteLine(itemline.Key + " : " + itemline.Value);
-                    }
-                    Console.WriteLine("****\n\n");
-                }
+                    string aValue = row[column];
 
+                    if (aValue.ToLower().Contains(value.ToLower()))
+                    {
+                        jobs.Add(row);
+                    }
+                }
             }
+
+            return jobs;
+        }
+
+        /*
+         * Load and parse data from job_data.csv
+         */
+        private static void LoadData()
+        {
+
+            if (IsDataLoaded)
+            {
+                return;
+            }
+
+            List<string[]> rows = new List<string[]>();
+
+            using (StreamReader reader = File.OpenText("C:/lc101/TechJobsConsole/job_data.csv"))
+            {
+                while (reader.Peek() >= 0)
+                {
+                    string line = reader.ReadLine();
+                    string[] rowArrray = CSVRowToStringArray(line);
+                    if (rowArrray.Length > 0)
+                    {
+                        rows.Add(rowArrray);
+                    }
+                }
+            }
+
+            string[] headers = rows[0];
+            rows.Remove(headers);
+
+            // Parse each row array into a more friendly Dictionary
+            foreach (string[] row in rows)
+            {
+                Dictionary<string, string> rowDict = new Dictionary<string, string>();
+
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    rowDict.Add(headers[i], row[i]);
+                }
+                AllJobs.Add(rowDict);
+            }
+
+            IsDataLoaded = true;
+        }
+
+        /*
+         * Parse a single line of a CSV file into a string array
+         */
+        private static string[] CSVRowToStringArray(string row, char fieldSeparator = ',', char stringSeparator = '\"')
+        {
+            bool isBetweenQuotes = false;
+            StringBuilder valueBuilder = new StringBuilder();
+            List<string> rowValues = new List<string>();
+
+            // Loop through the row string one char at a time
+            foreach (char c in row.ToCharArray())
+            {
+                if ((c == fieldSeparator && !isBetweenQuotes))
+                {
+                    rowValues.Add(valueBuilder.ToString());
+                    valueBuilder.Clear();
+                }
+                else
+                {
+                    if (c == stringSeparator)
+                    {
+                        isBetweenQuotes = !isBetweenQuotes;
+                    }
+                    else
+                    {
+                        valueBuilder.Append(c);
+                    }
+                }
+            }
+
+            // Add the final value
+            rowValues.Add(valueBuilder.ToString());
+            valueBuilder.Clear();
+
+            return rowValues.ToArray();
         }
     }
 }
+
